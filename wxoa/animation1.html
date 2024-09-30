@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="viewport" content="minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no, user-scalable=0" />
+    <style>
+        #ball{
+            background-color: cornflowerblue;
+            width: 100px;
+            height: 100px;
+            border-radius: 100px;
+            position:absolute;
+            top: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="ball"></div>
+    <script>
+        class BezierEasing
+        {
+            constructor(p1x, p1y, p2x, p2y)
+            {
+                /*
+                贝兹曲线的原始方程是：
+                b(t) = p0*(1-t)^3 + 3 * p1 * t * (1-t)^2 + 3 * p3 * t * t * (1-t) + p4 * t^3
+                这里 p0 为 (0, 0), p4为(1, 1) 代入上式子，然后展开式子就可以得到
+                b(t) = (c + (b + (a) * t ) * t  )  * t
+                下面就求出了 a, b, c为常数
+                */
+                this.cx = 3.0 * p1x;
+                this.bx = 3.0 * (p2x - p1x) - this.cx;
+                this.ax = 1.0 - this.cx -this.bx;
+
+                this.cy = 3.0 * p1y;
+                this.by = 3.0 * (p2y - p1y) - this.cy;
+                this.ay = 1.0 - this.cy - this.by;
+            }
+            sampleCurveX(t) {
+                return ((this.ax * t + this.bx) * t + this.cx) * t;
+            }
+            sampleCurveY(t) {
+                return ((this.ay * t + this.by) * t + this.cy) * t;
+            }
+            sampleCurveDerivativeX = function (t) {
+                /*
+                下面的式子是b(t) = (c + (b + (a) * t ) * t  )  * t 的导函数
+                */
+                return (3.0 * this.ax * t + 2.0 * this.bx) * t + this.cx;
+            }
+            solveCurveX (x) {
+                /*
+                给定x，代入式子b(t) = (c + (b + (a) * t ) * t  )  * t 求出t，这里用的是牛顿法求解
+                */
+                let epsilon = 1e-6; // Precision  
+                var t0; 
+                var t1;
+                var t2;
+                var x2;
+                var d2;
+                var i;
+
+                for (t2 = x, i = 0; i < 8; i++) {
+                    x2 = this.sampleCurveX(t2) - x;
+                    if (Math.abs (x2) < epsilon)
+                        return t2;
+                    d2 = this.sampleCurveDerivativeX(t2);
+                    if (Math.abs(d2) < epsilon)
+                        break;
+                    t2 = t2 - x2 / d2;
+                }
+
+                t0 = 0.0;
+                t1 = 1.0;
+                t2 = x;
+
+                if (t2 < t0) return t0;
+                if (t2 > t1) return t1;
+
+                while (t0 < t1) {
+                    x2 = this.sampleCurveX(t2);
+                    if (Math.abs(x2 - x) < epsilon)
+                        return t2;
+                    if (x > x2) t0 = t2;
+                    else t1 = t2;
+
+                    t2 = (t1 - t0) * .5 + t0;
+                }
+                return t2;
+            }
+            solve (x, epsilon) 
+            {
+                return this.sampleCurveY( this.solveCurveX(x, epsilon) );
+            }
+
+        }
+        document.addEventListener('click', ()=>{
+            let start = new Date().getTime();
+            let curve = new BezierEasing(0.885, 0.100, 0.200, 0.955);
+            const update = ()=>{
+                let t = (new Date().getTime() - start)/2000;
+                if(t > 1)return;
+                t = curve.solve(t);
+                
+                let x = 1200 * t;
+                document.querySelector("#ball").style.left = `${x}px`;
+                requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        });
+    </script>
+</body>
+
+</html>
